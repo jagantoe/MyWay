@@ -1,5 +1,9 @@
 /* Azure DevOps - Release Variables Insight (Services and Server).
  *
+ * @name Release Variables Insight
+ * @description Side panel that compares variables per stage and shows references and issues. Click again to reload it.
+ * @page Classic release definition or release
+ *
  * What it does
  *   Opens a side panel on a classic release definition (_releaseDefinition?definitionId=..) or a release
  *   (_releaseProgress?releaseId=..) that shows how pipeline variables and variable groups resolve per stage:

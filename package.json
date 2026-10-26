@@ -1,0 +1,13 @@
+{
+    "name": "myway",
+    "private": true,
+    "type": "module",
+    "description": "Azure DevOps UI extensions as bookmarklets",
+    "scripts": {
+        "build": "node scripts/build-bookmarklets.mjs",
+        "check": "node scripts/build-bookmarklets.mjs --check"
+    },
+    "devDependencies": {
+        "terser": "^5.36.0"
+    }
+}

@@ -1,5 +1,9 @@
 /* Azure DevOps - Pull requests of favorite repositories (Services and Server).
  *
+ * @name Favorite repo PRs
+ * @description Replaces the PR list with the active PRs of all your favorite repositories. Click again to turn it off.
+ * @page .../_git/<repo>/pullrequests (Mine / Active tabs)
+ *
  * What it does
  *   On a repository's pull request page (.../_git/<repo>/pullrequests, tabs "Mine" and "Active") the native list,
  *   which only shows the current repository, is hidden and replaced by the active PRs of all repositories you marked

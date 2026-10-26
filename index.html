@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>MyWay - Azure DevOps bookmarklets</title>
+    <style>
+        :root {
+            color-scheme: light dark;
+            --accent: #0078d4;
+            --muted: #6b6b6b;
+            --border: rgba(127, 127, 127, .3);
+            --card: rgba(127, 127, 127, .06);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font: 15px/1.5 "Segoe UI", system-ui, sans-serif;
+        }
+
+        main {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 32px 20px 64px;
+        }
+
+        h1 {
+            margin: 0 0 4px;
+            font-size: 28px;
+        }
+
+        h2 {
+            margin: 0;
+            font-size: 19px;
+        }
+
+        a {
+            color: var(--accent);
+        }
+
+        .lead {
+            margin: 0 0 24px;
+            color: var(--muted);
+        }
+
+        .steps {
+            margin: 0 0 32px;
+            padding: 16px 20px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--card);
+        }
+
+        .steps ol {
+            margin: 8px 0 0;
+            padding-left: 20px;
+        }
+
+        .card {
+            margin-bottom: 16px;
+            padding: 20px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+
+        .card p {
+            margin: 6px 0;
+        }
+
+        .page {
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .page code {
+            font-size: 12px;
+        }
+
+        .actions {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+            margin-top: 14px;
+        }
+
+        .drag {
+            display: inline-block;
+            padding: 6px 14px;
+            border-radius: 4px;
+            background: var(--accent);
+            color: #fff;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: grab;
+        }
+
+        button {
+            padding: 6px 14px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            background: transparent;
+            color: inherit;
+            font: inherit;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: var(--card);
+        }
+
+        .links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            margin-top: 12px;
+            font-size: 13px;
+        }
+
+        .raw {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .raw input {
+            flex: 1;
+            min-width: 0;
+            padding: 4px 8px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            background: transparent;
+            color: inherit;
+            font: 12px Consolas, monospace;
+        }
+
+        .status {
+            min-height: 1.5em;
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+        .error {
+            color: #cd4a45;
+        }
+
+        footer {
+            margin-top: 40px;
+            font-size: 13px;
+            color: var(--muted);
+        }
+    </style>
+</head>
+
+<body>
+    <main>
+        <h1>MyWay</h1>
+        <p class="lead">Bookmarklets that add features to the Azure DevOps web UI.</p>
+
+        <section class="steps">
+            <strong>Install</strong>
+            <ol>
+                <li>Show the bookmarks bar (Ctrl+Shift+B).</li>
+                <li>Drag a blue button onto the bookmarks bar. Or click <em>Copy bookmarklet</em>, add a new bookmark
+                    and paste it into the <strong>URL</strong> field.</li>
+                <li>Open the matching Azure DevOps page and click the bookmark.</li>
+            </ol>
+            <p class="page">Don't paste a bookmarklet into the address bar: browsers remove the <code>javascript:</code>
+                prefix from pasted text.
+                The raw source URL is meant for the DevTools console and development; use the bookmarklet for everyday
+                use.</p>
+        </section>
+
+        <div id="list">
+            <p class="status">Loading…</p>
+        </div>
+
+        <footer>Source and docs: <a id="repo-link" href="#">GitHub</a></footer>
+    </main>
+    <script>
+        (() => {
+            'use strict';
+            const REPO = 'jagantoe/MyWay';
+            const BRANCH = 'main';
+            const list = document.getElementById('list');
+            document.getElementById('repo-link').href = `https://github.com/${REPO}`;
+
+            function el(tag, props, ...kids) {
+                const node = Object.assign(document.createElement(tag), props);
+                node.append(...kids.filter(k => k != null));
+                return node;
+            }
+
+            async function copy(text, status) {
+                try {
+                    await navigator.clipboard.writeText(text);
+                    status.textContent = 'Copied.';
+                } catch {
+                    status.textContent = 'Copy failed. Select the text manually.';
+                }
+                setTimeout(() => { status.textContent = ''; }, 2500);
+            }
+
+            function card(ext, bookmarklet) {
+                const status = el('span', { className: 'status' });
+                const drag = el('a', { className: 'drag', href: bookmarklet, textContent: ext.name, title: 'Drag me to the bookmarks bar' });
+                drag.addEventListener('click', e => {
+                    e.preventDefault();
+                    status.textContent = 'Drag this button to the bookmarks bar instead of clicking it.';
+                });
+                const copyBtn = el('button', { type: 'button', textContent: 'Copy bookmarklet' });
+                copyBtn.addEventListener('click', () => copy(bookmarklet, status));
+
+                const rawUrl = `https://raw.githubusercontent.com/${REPO}/${BRANCH}/${ext.source}`;
+                const rawInput = el('input', { type: 'text', readOnly: true, value: rawUrl, ariaLabel: 'Raw source URL' });
+                rawInput.addEventListener('focus', () => rawInput.select());
+                const rawBtn = el('button', { type: 'button', textContent: 'Copy raw URL' });
+                rawBtn.addEventListener('click', () => copy(rawUrl, status));
+
+                return el('article', { className: 'card' },
+                    el('h2', { textContent: ext.name }),
+                    el('p', { textContent: ext.description }),
+                    ext.page ? el('p', { className: 'page' }, 'Runs on: ', el('code', { textContent: ext.page })) : null,
+                    el('div', { className: 'actions' }, drag, copyBtn, status),
+                    el('div', { className: 'links' },
+                        el('a', { href: `https://github.com/${REPO}/blob/${BRANCH}/${ext.source}`, textContent: 'Readable source' }),
+                        el('a', { href: ext.minified, textContent: 'Plain JS (minified)' }),
+                        el('a', { href: ext.bookmarklet, textContent: 'Bookmarklet URL (.txt)' }),
+                        el('span', { className: 'page', textContent: `${Math.round(ext.size / 1024)} KB` })),
+                    el('div', { className: 'raw' }, rawInput, rawBtn));
+            }
+
+            async function load() {
+                const res = await fetch('bookmarklets/manifest.json', { cache: 'no-cache' });
+                if (!res.ok) throw new Error(`manifest.json: HTTP ${res.status}`);
+                const { extensions } = await res.json();
+                const cards = await Promise.all(extensions.map(async ext => {
+                    const r = await fetch(ext.bookmarklet, { cache: 'no-cache' });
+                    if (!r.ok) throw new Error(`${ext.bookmarklet}: HTTP ${r.status}`);
+                    return card(ext, (await r.text()).trim());
+                }));
+                list.replaceChildren(...cards);
+            }
+
+            load().catch(e => {
+                list.replaceChildren(el('p', { className: 'status error', textContent: `Could not load the extensions: ${e.message}` }));
+            });
+        })();
+    </script>
+</body>
+
+</html>

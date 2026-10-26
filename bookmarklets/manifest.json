@@ -1,0 +1,24 @@
+{
+  "extensions": [
+    {
+      "id": "ado-favorite-prs",
+      "name": "Favorite repo PRs",
+      "description": "Replaces the PR list with the active PRs of all your favorite repositories. Click again to turn it off.",
+      "page": ".../_git/<repo>/pullrequests (Mine / Active tabs)",
+      "source": "extensions/ado-favorite-prs.js",
+      "minified": "bookmarklets/ado-favorite-prs.min.js",
+      "bookmarklet": "bookmarklets/ado-favorite-prs.bookmarklet.txt",
+      "size": 10924
+    },
+    {
+      "id": "ado-release-variables-insight",
+      "name": "Release Variables Insight",
+      "description": "Side panel that compares variables per stage and shows references and issues. Click again to reload it.",
+      "page": "Classic release definition or release",
+      "source": "extensions/ado-release-variables-insight.js",
+      "minified": "bookmarklets/ado-release-variables-insight.min.js",
+      "bookmarklet": "bookmarklets/ado-release-variables-insight.bookmarklet.txt",
+      "size": 45554
+    }
+  ]
+}

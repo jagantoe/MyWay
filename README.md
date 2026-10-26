@@ -1,21 +1,56 @@
 # MyWay
 
-# Azure DevOps snippets
+Browser scripts that add features to the Azure DevOps web UI, installable as bookmarklets.
 
-Browser scripts that add features to the Azure DevOps web UI. The `.js` files are the readable, commented source.
-Run them from the DevTools console, or build them into a bookmarklet with the steps below.
+**Dashboard: https://jagantoe.github.io/MyWay/** - drag or copy a bookmarklet from there.
 
 | Script | Page | What it does |
 | --- | --- | --- |
-| `ado-favorite-prs.js` | `.../_git/<repo>/pullrequests` (Mine / Active tabs) | Replaces the PR list with the active PRs of all your favorite repositories. Click again to turn it off. |
-| `ado-release-variables-insight.js` | Classic release definition or release | Side panel that compares variables per stage and shows references and issues. Click again to reload it. |
+| [`ado-favorite-prs.js`](extensions/ado-favorite-prs.js) | `.../_git/<repo>/pullrequests` (Mine / Active tabs) | Replaces the PR list with the active PRs of all your favorite repositories. Click again to turn it off. |
+| [`ado-release-variables-insight.js`](extensions/ado-release-variables-insight.js) | Classic release definition or release | Side panel that compares variables per stage and shows references and issues. Click again to reload it. |
 
 Each script's header comment explains what it does and how it works.
 
+## Repository layout
+
+| Path | Contents |
+| --- | --- |
+| `extensions/` | Readable, commented source of every extension. Add new extensions here. |
+| `bookmarklets/` | **Generated** - don't edit. Per extension a `<name>.min.js` (plain JS, no comments) and a `<name>.bookmarklet.txt` (the `javascript:` URL), plus `manifest.json` that the dashboard reads. |
+| `scripts/build-bookmarklets.mjs` | The converter from `extensions/` to `bookmarklets/`. |
+| `index.html` | The dashboard served by GitHub Pages. It lists everything in `bookmarklets/manifest.json`, so it needs no edits for new extensions. |
+| `.github/workflows/pages.yml` | CI: runs the converter, commits `bookmarklets/` and deploys the dashboard. |
+
+## Adding an extension
+
+1. Create `extensions/<name>.js`. Follow the [rules for writing the source](#rules-for-writing-the-source).
+2. Start the file with a block comment that contains the metadata for the dashboard. `@name` and `@description` are
+   required, `@page` is optional. Each tag is one line:
+
+   ```js
+   /* Azure DevOps - Short title.
+    *
+    * @name My extension
+    * @description One sentence about what it does. Click again to turn it off.
+    * @page .../_git/<repo>/pullrequests
+    *
+    * What it does
+    *   ...
+    */
+   (() => {
+     'use strict';
+     // ...
+   })();
+   ```
+
+3. Run `npm run build` (see [Building the bookmarklets](#building-the-bookmarklets)) and test the result.
+4. Push to `main`. CI regenerates `bookmarklets/` if needed and the extension shows up on the dashboard.
+
 ## Running from the console
 
-Open DevTools (F12) > Console, paste the whole file and press Enter. Use this while you are developing a script.
-Error messages and stack traces are much easier to read than in the minified bookmarklet.
+Open DevTools (F12) > Console, paste the whole file from `extensions/` and press Enter. Use this while you are
+developing a script. Error messages and stack traces are much easier to read than in the minified bookmarklet.
+The dashboard also lists the raw GitHub URL of each source file for this purpose.
 
 ## How a bookmarklet works
 
@@ -66,48 +101,62 @@ Follow these rules in the `.js` source so the build output always works as a boo
     without problems. Other browsers and bookmark sync may have lower limits on URL length. If a bookmarklet is cut off,
     it fails with a syntax error. Always test the bookmark in the browser where you'll use it.
 
-## Building a bookmarklet
+## Building the bookmarklets
 
-Requirements: Node.js. `npx` downloads [terser](https://terser.org/) on the first run.
-
-Run this in PowerShell from the snippets folder. It creates `dist\<name>.min.js` and `dist\<name>.bookmarklet.txt` for
-every script:
+Requirements: Node.js 18 or later. Run from the repo root:
 
 ```powershell
-New-Item -ItemType Directory -Force dist | Out-Null
-foreach ($n in (Get-ChildItem *.js).BaseName) {
-  npx --yes terser "$n.js" --compress --mangle --format ascii_only=true --output "dist\$n.min.js"
-  node -e "const fs=require('fs');const [i,o]=process.argv.slice(1);const s=fs.readFileSync(i,'utf8').trim().replace(/;$/,'');fs.writeFileSync(o,'javascript:void '+s.replace(/[%#\r\n]/g,encodeURIComponent))" "dist\$n.min.js" "dist\$n.bookmarklet.txt"
-}
+npm install       # once, installs terser
+npm run build     # regenerates bookmarklets/ from extensions/
+npm run check     # fails if bookmarklets/ is missing, outdated or has stale files
 ```
 
-What the build does:
+In PowerShell with a restricted execution policy, use `npm.cmd` instead of `npm`.
 
-1. `terser` minifies the code, removes comments, shortens local names and escapes non-ASCII characters.
-2. The trailing `;` is removed and `void ` is added in front, so the URL returns `undefined`.
-3. `%`, `#` and any remaining line breaks (for example in the CSS template literal) are percent-encoded.
-4. `javascript:` is added in front.
+For every `extensions/<name>.js` the converter ([scripts/build-bookmarklets.mjs](scripts/build-bookmarklets.mjs)):
 
-Optional check that every generated bookmarklet decodes back to valid JavaScript:
+1. Reads `@name`, `@description` and `@page` from the header comment. The build fails if `@name` or `@description`
+   is missing.
+2. Minifies the code with [terser](https://terser.org/): removes comments, shortens local names and escapes non-ASCII
+   characters. The result is written to `bookmarklets/<name>.min.js`.
+3. Removes the trailing `;` and adds `void ` in front, so the URL returns `undefined`.
+4. Percent-encodes `%`, `#` and any remaining line breaks (for example in a CSS template literal).
+5. Adds `javascript:` in front and writes `bookmarklets/<name>.bookmarklet.txt`.
+6. Checks that the URL decodes back to a single valid JavaScript expression, and warns when it is larger than 64 KB.
 
-```powershell
-node -e "const fs=require('fs');for(const f of fs.readdirSync('dist').filter(f=>f.endsWith('.txt'))){new Function(decodeURIComponent(fs.readFileSync('dist/'+f,'utf8').slice(11)));console.log(f,'OK')}"
-```
+It then writes `bookmarklets/manifest.json` and deletes outputs whose source no longer exists.
 
-## Installing the bookmarklet
+## CI and GitHub Pages
 
-1. Open the generated `dist\<name>.bookmarklet.txt` and copy its full content (it's one line).
-2. Show the bookmarks bar (Ctrl+Shift+B), right-click it and select **Add page...** (Edge: **Add favorite**).
+[.github/workflows/pages.yml](.github/workflows/pages.yml) runs on every push to `main` (and manually):
+
+1. `npm ci` and `npm run build`.
+2. If `bookmarklets/` changed, it commits the update as `github-actions[bot]`. That commit doesn't start the workflow
+   again.
+3. It publishes `index.html`, `extensions/` and `bookmarklets/` to GitHub Pages.
+
+One-time setup: in the repository, go to **Settings > Pages** and set **Source** to **GitHub Actions**.
+
+You can still commit `bookmarklets/` yourself after `npm run build`; CI then has nothing to update.
+
+## Installing a bookmarklet
+
+The easiest way is the [dashboard](https://jagantoe.github.io/MyWay/): show the bookmarks bar (Ctrl+Shift+B) and drag
+the blue button onto it. Or copy it by hand:
+
+1. Click **Copy bookmarklet** on the dashboard, or open `bookmarklets/<name>.bookmarklet.txt` and copy its full
+   content (it's one line).
+2. Right-click the bookmarks bar and select **Add page...** (Edge: **Add favorite**).
 3. Enter a name, paste the copied text into the **URL** field and save.
 
 Don't paste the text into the address bar. For safety, browsers remove the `javascript:` prefix from pasted text.
 
-After you change a script, rebuild it and replace the URL of the existing bookmark.
+After a script changes, replace the URL of the existing bookmark with the new version.
 
 ## Troubleshooting
 
 - **Nothing happens:** open DevTools > Console and click the bookmark again. A `SyntaxError` usually means the URL was
-  cut off or wasn't encoded. Rebuild the bookmarklet and paste the URL again. Managed (corporate) browsers can also
+  cut off or wasn't encoded. Copy the bookmarklet again from the dashboard. Managed (corporate) browsers can also
   block `javascript:` URLs by policy.
 - **The page turns into a single line of text:** the code returned a value. Check that the URL starts with
   `javascript:void `.
